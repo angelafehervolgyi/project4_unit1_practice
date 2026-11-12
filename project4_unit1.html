@@ -1,0 +1,716 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Project 4 - Unit 1 Challenge</title>
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;min-height:100vh;padding:20px;
+ font-family:Arial,sans-serif;
+ background:linear-gradient(135deg,#4f46e5,#a855f7,#ec4899,#fb923c);
+ display:flex;justify-content:center;align-items:center
+}
+.game{
+ background:white;width:100%;max-width:800px;
+ padding:30px;border-radius:25px;
+ box-shadow:0 15px 45px #0003;text-align:center
+}
+h1{color:#6335c7;margin-bottom:5px}
+.subtitle{color:#777}
+.progress{
+ height:14px;background:#e9e3fa;
+ border-radius:20px;overflow:hidden;margin:22px 0
+}
+.bar{
+ height:100%;width:0;
+ background:linear-gradient(90deg,#06b6d4,#8b5cf6);
+ transition:.3s
+}
+.tag{
+ display:inline-block;background:#eee5ff;color:#6335c7;
+ padding:9px 17px;border-radius:30px;font-weight:bold
+}
+.question{
+ font-size:23px;font-weight:bold;
+ line-height:1.6;margin:25px 0
+}
+.instruction{color:#666;font-size:15px;margin-top:15px}
+.options{
+ display:grid;grid-template-columns:1fr 1fr;gap:12px
+}
+button{
+ border:none;border-radius:13px;padding:14px;
+ font-size:16px;font-weight:bold;cursor:pointer
+}
+.option{background:#f0ecff;color:#44278b;border:2px solid transparent}
+.option:hover:not(:disabled){background:#e0d5ff}
+.option:disabled{cursor:default}
+.correct{background:#d1fae5!important;color:#166534!important;border-color:#16a34a!important}
+.wrong{background:#fee2e2!important;color:#991b1b!important;border-color:#dc2626!important}
+.answer-input{
+ width:100%;max-width:450px;padding:15px;
+ border:2px solid #c4b5fd;border-radius:12px;
+ font-size:19px;text-align:center
+}
+.word-bank{display:flex;flex-wrap:wrap;justify-content:center;gap:9px}
+.word{
+ background:#e9ddff;color:#432181;
+ border:2px solid #c4b5fd
+}
+.word:disabled{opacity:.4}
+.built{
+ min-height:65px;border:2px dashed #a78bfa;
+ border-radius:13px;padding:12px;margin:15px 0;
+ background:#faf7ff;font-size:19px
+}
+.feedback{min-height:70px;margin:20px 0;font-size:19px;font-weight:bold}
+.good{color:#16a34a}.bad{color:#dc2626}
+.small{font-size:15px;color:#666;margin-top:8px}
+.action{background:#6335c7;color:white;margin:5px}
+.action:disabled{opacity:.45;cursor:default}
+.score{font-size:65px;font-weight:bold;color:#6335c7}
+.hidden{display:none}
+.review{text-align:left;margin-top:25px}
+.review-item{
+ padding:13px;margin:10px 0;background:#fff0f0;
+ border-radius:10px;font-size:15px
+}
+@media(max-width:550px){
+ .game{padding:20px}
+ .options{grid-template-columns:1fr}
+ .question{font-size:20px}
+}
+</style>
+</head>
+<body>
+<div class="game">
+<h1>🎮 Project 4 Challenge</h1>
+<p class="subtitle">Unit 1 • Grammar & Vocabulary</p>
+
+<div id="quiz">
+<p id="counter"></p>
+<div class="progress"><div class="bar" id="bar"></div></div>
+<span class="tag" id="category"></span>
+<p class="instruction" id="instruction"></p>
+<div class="question" id="question"></div>
+<div id="answerArea"></div>
+<div class="feedback" id="feedback" aria-live="polite"></div>
+<button class="action" id="check" onclick="checkAnswer()">Check Answer ✔</button>
+<button class="action" id="next" onclick="nextQuestion()" disabled>Next Question ➜</button>
+</div>
+
+<div id="result" class="hidden">
+<h2>🏆 Mission Complete!</h2>
+<div class="score" id="score"></div>
+<h2 id="message"></h2>
+<div class="review" id="review"></div>
+<button class="action" onclick="startGame()">🔄 Play Again</button>
+</div>
+</div>
+
+<script>
+/*
+Question format:
+[type, category, question, answer, options]
+
+Types:
+choice = multiple choice
+gap = choose the missing word
+write = type the answer
+order = build a sentence
+*/
+
+const bank = [
+
+["choice","Used to",
+"My grandad ___ walk to school when he was young.",
+"used to",["use to","used to","uses to","was used"]],
+
+["gap","Used to",
+"People ___ write letters more often in the past.",
+"used to",["used to","use to","using to","were used"]],
+
+["choice","Used to",
+"Did you ___ play outside every day?",
+"use to",["used to","use to","using to","uses to"]],
+
+["gap","Used to",
+"My mum didn't ___ have a mobile phone.",
+"use to",["used to","use to","uses to","using to"]],
+
+["write","Used to",
+"Complete: She ___ (not / use to) wear jeans.",
+"didn't use to",[]],
+
+["write","Used to",
+"Complete: ___ (you / use to) ride a bike to school?",
+"Did you use to",[]],
+
+["order","Used to",
+"Make a correct sentence.",
+"People used to wear different clothes.",
+["People","used","to","wear","different","clothes."]],
+
+["order","Used to",
+"Make a correct negative sentence.",
+"He didn't use to like history.",
+["He","didn't","use","to","like","history."]],
+
+["choice","Used to",
+"Choose the correct sentence.",
+"She used to live in London.",
+["She use to live in London.","She used to live in London.",
+"She used to lived in London.","She was use to live in London."]],
+
+["choice","Used to",
+"Choose the correct question.",
+"Did they use to play together?",
+["Did they used to play together?","Did they use to play together?",
+"Do they used to play together?","Were they use to play together?"]],
+
+["choice","Past Simple",
+"Yesterday we ___ a museum.",
+"visited",["visit","visited","visiting","visits"]],
+
+["gap","Past Simple",
+"She ___ a new jacket last week.",
+"bought",["buy","buyed","bought","buying"]],
+
+["choice","Past Simple",
+"He ___ his homework yesterday.",
+"did",["do","does","did","doing"]],
+
+["write","Past Simple",
+"Complete: They ___ (go) to the cinema.",
+"went",[]],
+
+["write","Past Simple",
+"Complete: I ___ (not / see) the film.",
+"didn't see",[]],
+
+["choice","Past Simple",
+"___ you enjoy the party?",
+"Did",["Do","Does","Did","Were"]],
+
+["order","Past Simple",
+"Make a correct sentence.",
+"We watched a film last night.",
+["We","watched","a","film","last","night."]],
+
+["choice","Past Simple",
+"Choose the correct sentence.",
+"She didn't buy a new dress.",
+["She didn't bought a new dress.",
+"She didn't buy a new dress.",
+"She doesn't bought a new dress.",
+"She wasn't buy a new dress."]],
+
+["choice","Past Continuous",
+"At eight o'clock I ___ TV.",
+"was watching",["watched","was watching","were watching","watch"]],
+
+["gap","Past Continuous",
+"They ___ football when it started raining.",
+"were playing",["was playing","played","were playing","play"]],
+
+["choice","Past Continuous",
+"While Mum was cooking, Dad ___ a book.",
+"was reading",["read","were reading","was reading","reads"]],
+
+["write","Past Continuous",
+"Complete: She ___ (sleep) at midnight.",
+"was sleeping",[]],
+
+["write","Past Continuous",
+"Complete: We ___ (not / listen) to music.",
+"weren't listening",[]],
+
+["choice","Past Continuous",
+"___ you sleeping when I called?",
+"Were",["Was","Did","Were","Do"]],
+
+["order","Past Continuous",
+"Make a correct sentence.",
+"They were walking home.",
+["They","were","walking","home."]],
+
+["choice","Past Continuous",
+"Choose the correct sentence.",
+"He wasn't wearing a coat.",
+["He weren't wearing a coat.",
+"He wasn't wear a coat.",
+"He wasn't wearing a coat.",
+"He didn't wearing a coat."]],
+
+["choice","Past Simple vs Past Continuous",
+"I ___ when the phone rang.",
+"was studying",["studied","was studying","were studying","study"]],
+
+["gap","Past Simple vs Past Continuous",
+"While I was walking, I ___ my friend.",
+"saw",["see","was seeing","saw","seen"]],
+
+["choice","Past Simple vs Past Continuous",
+"They ___ dinner when the lights went out.",
+"were having",["had","was having","were having","have"]],
+
+["write","Past Simple vs Past Continuous",
+"Complete: It ___ (rain) when we left.",
+"was raining",[]],
+
+["write","Past Simple vs Past Continuous",
+"Complete: I was watching TV when Mum ___ (arrive).",
+"arrived",[]],
+
+["order","Past Simple vs Past Continuous",
+"Make a correct sentence.",
+"I was reading when he arrived.",
+["I","was","reading","when","he","arrived."]],
+
+["choice","Past Simple vs Past Continuous",
+"While she ___, her brother was playing.",
+"was studying",["studied","was studying","studies","study"]],
+
+["choice","Past Simple vs Past Continuous",
+"He fell while he ___ his bike.",
+"was riding",["rode","rides","was riding","were riding"]],
+
+["choice","Could / Couldn't",
+"When I was five, I ___ swim.",
+"couldn't",["can't","couldn't","don't","wasn't"]],
+
+["gap","Could / Couldn't",
+"My grandma ___ speak three languages.",
+"could",["can","could","was","did"]],
+
+["choice","Could / Couldn't",
+"___ you ride a bike when you were six?",
+"Could",["Can","Did","Could","Were"]],
+
+["write","Could / Couldn't",
+"Complete: I ___ (could / not) understand the question.",
+"couldn't",[]],
+
+["order","Could / Couldn't",
+"Make a correct sentence.",
+"She could read at four.",
+["She","could","read","at","four."]],
+
+["choice","Could / Couldn't",
+"Choose the correct sentence.",
+"He couldn't play the piano.",
+["He couldn't played the piano.",
+"He couldn't to play the piano.",
+"He couldn't play the piano.",
+"He didn't could play the piano."]],
+
+["choice","Had to / Didn't have to",
+"Yesterday I ___ finish my homework.",
+"had to",["have to","has to","had to","having to"]],
+
+["gap","Had to / Didn't have to",
+"We ___ wear a uniform at our old school.",
+"had to",["had to","have to","must to","were have to"]],
+
+["choice","Had to / Didn't have to",
+"It was a holiday, so we ___ go to school.",
+"didn't have to",["had to","didn't have to","mustn't","don't have to"]],
+
+["write","Had to / Didn't have to",
+"Complete: She ___ (not / have to) get up early.",
+"didn't have to",[]],
+
+["order","Had to / Didn't have to",
+"Make a correct sentence.",
+"We had to help our parents.",
+["We","had","to","help","our","parents."]],
+
+["choice","Had to / Didn't have to",
+"Choose the correct sentence.",
+"Did you have to wear a uniform?",
+["Did you had to wear a uniform?",
+"Did you have to wear a uniform?",
+"Had you to wear a uniform?",
+"Did you have wear a uniform?"]],
+
+["choice","Vocabulary: Materials",
+"This ring is made of ___.",
+"gold",["cotton","gold","leather","wool"]],
+
+["gap","Vocabulary: Materials",
+"A warm winter jumper is often made of ___.",
+"wool",["glass","metal","wool","plastic"]],
+
+["choice","Vocabulary: Materials",
+"Many T-shirts are made of ___.",
+"cotton",["cotton","wood","glass","stone"]],
+
+["choice","Vocabulary: Clothes",
+"You wear these on your hands in winter.",
+"gloves",["boots","gloves","scarf","belt"]],
+
+["gap","Vocabulary: Clothes",
+"You wear a ___ around your neck in winter.",
+"scarf",["belt","scarf","glove","sock"]],
+
+["choice","Vocabulary: Compound Nouns",
+"Which is a compound noun?",
+"shopping centre",["beautiful","quickly","shopping centre","expensive"]]
+
+];
+
+// GAME SETTINGS
+
+const QUESTIONS_PER_ROUND = 12;
+
+let round = [];
+let index = 0;
+let score = 0;
+let answered = false;
+let selectedAnswer = "";
+let chosenWords = [];
+let usedRecently = new Set();
+let mistakes = [];
+
+// SHUFFLE
+
+function shuffle(arr){
+ const copy = [...arr];
+ for(let i=copy.length-1;i>0;i--){
+  const j=Math.floor(Math.random()*(i+1));
+  [copy[i],copy[j]]=[copy[j],copy[i]];
+ }
+ return copy;
+}
+
+// NORMALIZE TEXT
+
+function normalize(text){
+ return String(text)
+ .trim()
+ .toLowerCase()
+ .replace(/[’‘]/g,"'")
+ .replace(/[.!?]+$/g,"")
+ .replace(/\s+/g," ");
+}
+
+// SELECT QUESTIONS
+
+function createRound(){
+ const categories = [...new Set(bank.map(q=>q[1]))];
+ let selected = [];
+
+ // At least one question from every category.
+ categories.forEach(category=>{
+  let available=bank
+   .map((q,i)=>({q,i}))
+   .filter(x=>x.q[1]===category && !usedRecently.has(x.i));
+
+  if(!available.length){
+   available=bank
+    .map((q,i)=>({q,i}))
+    .filter(x=>x.q[1]===category);
+  }
+
+  selected.push(shuffle(available)[0]);
+ });
+
+ let remaining=bank
+  .map((q,i)=>({q,i}))
+  .filter(x=>!selected.some(s=>s.i===x.i)
+    && !usedRecently.has(x.i));
+
+ if(remaining.length <
+    QUESTIONS_PER_ROUND-selected.length){
+  remaining=bank
+   .map((q,i)=>({q,i}))
+   .filter(x=>!selected.some(s=>s.i===x.i));
+ }
+
+ selected.push(...shuffle(remaining).slice(
+  0,QUESTIONS_PER_ROUND-selected.length
+ ));
+
+ usedRecently=new Set(selected.map(x=>x.i));
+ return shuffle(selected.map(x=>x.q));
+}
+
+// START GAME
+
+function startGame(){
+ round=createRound();
+ index=0;
+ score=0;
+ mistakes=[];
+ answered=false;
+
+ document.getElementById("quiz").classList.remove("hidden");
+ document.getElementById("result").classList.add("hidden");
+
+ showQuestion();
+}
+
+// SHOW QUESTION
+
+function showQuestion(){
+ answered=false;
+ selectedAnswer="";
+ chosenWords=[];
+
+ const q=round[index];
+ const type=q[0];
+
+ document.getElementById("counter").textContent=
+  "Question "+(index+1)+" of "+QUESTIONS_PER_ROUND;
+
+ document.getElementById("bar").style.width=
+  (index/QUESTIONS_PER_ROUND*100)+"%";
+
+ document.getElementById("category").textContent=q[1];
+ document.getElementById("question").textContent=q[2];
+
+ document.getElementById("feedback").innerHTML="";
+ document.getElementById("next").disabled=true;
+ document.getElementById("check").disabled=false;
+
+ document.getElementById("next").textContent=
+  index===QUESTIONS_PER_ROUND-1
+  ?"See My Results ➜":"Next Question ➜";
+
+ const area=document.getElementById("answerArea");
+ area.innerHTML="";
+
+ const instruction=document.getElementById("instruction");
+
+ if(type==="choice"||type==="gap"){
+  instruction.textContent="Choose the correct answer.";
+  const container=document.createElement("div");
+  container.className="options";
+
+  shuffle(q[4]).forEach(option=>{
+   const btn=document.createElement("button");
+   btn.className="option";
+   btn.textContent=option;
+   btn.onclick=()=>{
+    if(answered)return;
+    selectedAnswer=option;
+    container.querySelectorAll("button").forEach(b=>{
+     b.style.outline="";
+    });
+    btn.style.outline="3px solid #7c3aed";
+   };
+   container.appendChild(btn);
+  });
+  area.appendChild(container);
+ }
+
+ if(type==="write"){
+  instruction.textContent="Type the correct answer.";
+  const input=document.createElement("input");
+  input.className="answer-input";
+  input.id="typed";
+  input.placeholder="Write your answer...";
+  input.autocomplete="off";
+  input.onkeydown=e=>{
+   if(e.key==="Enter"&&!answered)checkAnswer();
+  };
+  area.appendChild(input);
+ }
+
+ if(type==="order"){
+  instruction.textContent=
+   "Click the words in the correct order.";
+
+  const built=document.createElement("div");
+  built.className="built";
+  built.id="built";
+  built.textContent="Your sentence will appear here.";
+  area.appendChild(built);
+
+  const container=document.createElement("div");
+  container.className="word-bank";
+
+  shuffle(q[4]).forEach(word=>{
+   const btn=document.createElement("button");
+   btn.className="word";
+   btn.textContent=word;
+   btn.onclick=()=>{
+    if(answered)return;
+    chosenWords.push(word);
+    btn.disabled=true;
+    built.textContent=chosenWords.join(" ");
+   };
+   container.appendChild(btn);
+  });
+
+  area.appendChild(container);
+
+  const reset=document.createElement("button");
+  reset.className="action";
+  reset.textContent="Clear Sentence";
+  reset.onclick=()=>{
+   if(answered)return;
+   chosenWords=[];
+   built.textContent="Your sentence will appear here.";
+   container.querySelectorAll("button").forEach(b=>b.disabled=false);
+  };
+  area.appendChild(document.createElement("br"));
+  area.appendChild(reset);
+ }
+}
+
+// CHECK ANSWER
+
+function checkAnswer(){
+ if(answered)return;
+
+ const q=round[index];
+ const type=q[0];
+ const correct=q[3];
+
+ let answer="";
+
+ if(type==="choice"||type==="gap"){
+  answer=selectedAnswer;
+ }
+
+ if(type==="write"){
+  answer=document.getElementById("typed").value;
+ }
+
+ if(type==="order"){
+  answer=chosenWords.join(" ");
+ }
+
+ if(!answer.trim()){
+  document.getElementById("feedback").innerHTML=
+   '<span class="bad">Please answer the question first.</span>';
+  return;
+ }
+
+ answered=true;
+ const isCorrect=normalize(answer)===normalize(correct);
+
+ const feedback=document.getElementById("feedback");
+
+ if(isCorrect){
+  score++;
+  feedback.innerHTML=
+   '<span class="good">✔ Excellent! Correct answer!</span>';
+ }else{
+  feedback.innerHTML=
+   '<span class="bad">✘ Not quite!</span>'+
+   '<div class="small">Correct answer: '+
+   escapeHTML(correct)+'</div>';
+
+  mistakes.push({
+   question:q[2],
+   answer:correct
+  });
+ }
+
+ if(type==="choice"||type==="gap"){
+  document.querySelectorAll(".option").forEach(btn=>{
+   btn.disabled=true;
+   if(normalize(btn.textContent)===normalize(correct)){
+    btn.classList.add("correct");
+   }else if(normalize(btn.textContent)===normalize(answer)){
+    btn.classList.add("wrong");
+   }
+  });
+ }
+
+ if(type==="write"){
+  document.getElementById("typed").disabled=true;
+ }
+
+ if(type==="order"){
+  document.querySelectorAll(".word").forEach(btn=>btn.disabled=true);
+ }
+
+ document.getElementById("check").disabled=true;
+ document.getElementById("next").disabled=false;
+
+ document.getElementById("bar").style.width=
+  ((index+1)/QUESTIONS_PER_ROUND*100)+"%";
+}
+
+// ESCAPE HTML
+
+function escapeHTML(text){
+ return String(text)
+  .replace(/&/g,"&amp;")
+  .replace(/</g,"&lt;")
+  .replace(/>/g,"&gt;")
+  .replace(/"/g,"&quot;");
+}
+
+// NEXT QUESTION
+
+function nextQuestion(){
+ if(!answered)return;
+ index++;
+ if(index>=QUESTIONS_PER_ROUND){
+  showResults();
+ }else{
+  showQuestion();
+ }
+}
+
+// SHOW RESULTS
+
+function showResults(){
+ document.getElementById("quiz").classList.add("hidden");
+ document.getElementById("result").classList.remove("hidden");
+
+ document.getElementById("score").textContent=
+  score+" / "+QUESTIONS_PER_ROUND;
+
+ let message="";
+ if(score===12){
+  message="🌟 Perfect! You're a grammar superstar!";
+ }else if(score>=10){
+  message="🎉 Amazing work!";
+ }else if(score>=8){
+  message="👍 Good job! Keep practising!";
+ }else{
+  message="💪 Keep trying! You can do it!";
+ }
+
+ document.getElementById("message").textContent=message;
+
+ const review=document.getElementById("review");
+ review.innerHTML="";
+
+ if(mistakes.length){
+  const title=document.createElement("h3");
+  title.textContent="Let's review your mistakes:";
+  review.appendChild(title);
+
+  mistakes.forEach(m=>{
+   const item=document.createElement("div");
+   item.className="review-item";
+
+   const question=document.createElement("div");
+   question.textContent=m.question;
+
+   const answer=document.createElement("strong");
+   answer.textContent="Correct answer: "+m.answer;
+
+   item.appendChild(question);
+   item.appendChild(answer);
+   review.appendChild(item);
+  });
+ }else{
+  review.innerHTML=
+   '<p class="good">✔ No mistakes! Fantastic!</p>';
+ }
+}
+
+startGame();
+</script>
+</body>
+</html>
